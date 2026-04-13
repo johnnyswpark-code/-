@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현대적인 계산기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .calculator-card {
+            background-color: #ffffff;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border-radius: 1.5rem;
+            width: 100%;
+            max-width: 360px;
+            padding: 1.5rem;
+        }
+
+        .display-area {
+            background-color: #f9fafb;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: right;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+
+        .expression {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+            height: 1.25rem;
+            word-break: break-all;
+        }
+
+        .current-value {
+            color: #111827;
+            font-size: 2.25rem;
+            font-weight: 600;
+            line-height: 1;
+            word-break: break-all;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+
+        .btn {
+            height: 64px;
+            border-radius: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-num {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        .btn-num:hover {
+            background-color: #e5e7eb;
+        }
+
+        .btn-op {
+            background-color: #eff6ff;
+            color: #2563eb;
+        }
+
+        .btn-op:hover {
+            background-color: #dbeafe;
+        }
+
+        .btn-action {
+            background-color: #fef2f2;
+            color: #ef4444;
+        }
+
+        .btn-action:hover {
+            background-color: #fee2e2;
+        }
+
+        .btn-equal {
+            background-color: #2563eb;
+            color: #ffffff;
+            grid-column: span 2;
+        }
+
+        .btn-equal:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* 다크 모드 대응 */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #111827; }
+            .calculator-card { background-color: #1f2937; }
+            .display-area { background-color: #374151; }
+            .expression { color: #9ca3af; }
+            .current-value { color: #ffffff; }
+            .btn-num { background-color: #374151; color: #f3f4f6; }
+            .btn-num:hover { background-color: #4b5563; }
+            .btn-op { background-color: #1e3a8a; color: #60a5fa; }
+            .btn-op:hover { background-color: #1e40af; }
+            .btn-action { background-color: #7f1d1d; color: #f87171; }
+            .btn-action:hover { background-color: #991b1b; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-card">
+    <div class="display-area">
+        <div id="expression" class="expression"></div>
+        <div id="display" class="current-value">0</div>
+    </div>
+
+    <div class="btn-grid">
+        <!-- 첫 번째 줄 -->
+        <div class="btn btn-action" onclick="clearDisplay()">AC</div>
+        <div class="btn btn-action" onclick="deleteLast()">DEL</div>
+        <div class="btn btn-op" onclick="appendOperator('%')">%</div>
+        <div class="btn btn-op" onclick="appendOperator('/')">÷</div>
+
+        <!-- 숫자 및 연산자 -->
+        <div class="btn btn-num" onclick="appendNumber('7')">7</div>
+        <div class="btn btn-num" onclick="appendNumber('8')">8</div>
+        <div class="btn btn-num" onclick="appendNumber('9')">9</div>
+        <div class="btn btn-op" onclick="appendOperator('*')">×</div>
+
+        <div class="btn btn-num" onclick="appendNumber('4')">4</div>
+        <div class="btn btn-num" onclick="appendNumber('5')">5</div>
+        <div class="btn btn-num" onclick="appendNumber('6')">6</div>
+        <div class="btn btn-op" onclick="appendOperator('-')">−</div>
+
+        <div class="btn btn-num" onclick="appendNumber('1')">1</div>
+        <div class="btn btn-num" onclick="appendNumber('2')">2</div>
+        <div class="btn btn-num" onclick="appendNumber('3')">3</div>
+        <div class="btn btn-op" onclick="appendOperator('+')">+</div>
+
+        <div class="btn btn-num" onclick="appendNumber('0')">0</div>
+        <div class="btn btn-num" onclick="appendNumber('.')">.</div>
+        <div class="btn btn-equal" onclick="calculate()">=</div>
+    </div>
+</div>
+
+<script>
+    let currentInput = '0';
+    let prevInput = '';
+    let operator = null;
+    let shouldResetScreen = false;
+
+    const displayElement = document.getElementById('display');
+    const expressionElement = document.getElementById('expression');
+
+    // 숫자 입력
+    function appendNumber(number) {
+        if (currentInput === '0' || shouldResetScreen) {
+            currentInput = number;
+            shouldResetScreen = false;
+        } else {
+            currentInput += number;
+        }
+        updateDisplay();
+    }
+
+    // 연산자 입력
+    function appendOperator(op) {
+        if (operator !== null) calculate();
+        prevInput = currentInput;
+        operator = op;
+        shouldResetScreen = true;
+        updateExpression();
+    }
+
+    // 화면 초기화 (AC)
+    function clearDisplay() {
+        currentInput = '0';
+        prevInput = '';
+        operator = null;
+        shouldResetScreen = false;
+        expressionElement.innerText = '';
+        updateDisplay();
+    }
+
+    // 마지막 글자 삭제 (DEL)
+    function deleteLast() {
+        if (shouldResetScreen) return;
+        currentInput = currentInput.toString().slice(0, -1);
+        if (currentInput === '') currentInput = '0';
+        updateDisplay();
+    }
+
+    // 계산 실행
+    function calculate() {
+        if (operator === null || shouldResetScreen) return;
+        
+        let result;
+        const prev = parseFloat(prevInput);
+        const current = parseFloat(currentInput);
+
+        if (isNaN(prev) || isNaN(current)) return;
+
+        switch (operator) {
+            case '+': result = prev + current; break;
+            case '-': result = prev - current; break;
+            case '*': result = prev * current; break;
+            case '/': 
+                if (current === 0) {
+                    showError("0으로 나눌 수 없음");
+                    return;
+                }
+                result = prev / current; 
+                break;
+            case '%': result = prev % current; break;
+            default: return;
+        }
+
+        // 수식 표시 업데이트
+        expressionElement.innerText = `${prev} ${operator} ${current} =`;
+        
+        // 결과값 정리 (부동 소수점 오차 방지)
+        currentInput = Math.round(result * 100000000) / 100000000;
+        operator = null;
+        shouldResetScreen = true;
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        // 천단위 콤마 추가 등 포맷팅은 필요에 따라 추가
+        displayElement.innerText = currentInput;
+    }
+
+    function updateExpression() {
+        expressionElement.innerText = `${prevInput} ${operator}`;
+    }
+
+    function showError(msg) {
+        displayElement.innerText = 'Error';
+        expressionElement.innerText = msg;
+        setTimeout(clearDisplay, 2000);
+    }
+
+    // 키보드 지원
+    window.addEventListener('keydown', (e) => {
+        if (e.key >= 0 && e.key <= 9) appendNumber(e.key);
+        if (e.key === '.') appendNumber('.');
+        if (e.key === '=' || e.key === 'Enter') calculate();
+        if (e.key === 'Backspace') deleteLast();
+        if (e.key === 'Escape') clearDisplay();
+        if (['+', '-', '*', '/', '%'].includes(e.key)) appendOperator(e.key);
+    });
+</script>
+
+</body>
+</html>
